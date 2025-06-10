@@ -1,0 +1,55 @@
+// Create Database
+CREATE OR REPLACE DATABASE AI_RECOMMENDATION_SYSTEM;
+USE DATABASE AI_RECOMMENDATION_SYSTEM;
+
+CREATE OR REPLACE TABLE Review (
+    "User ID" STRING,
+    "ASIN" STRING,
+    "Rating" STRING,
+    "Product Title" STRING,
+    PRIMARY KEY ("User ID", "ASIN")
+);
+
+
+// Create File Format
+CREATE OR REPLACE FILE FORMAT my_csv_format
+TYPE = 'CSV'
+FIELD_OPTIONALLY_ENCLOSED_BY = '"'
+SKIP_HEADER = 1;
+
+// Initialize S3 Storage
+CREATE OR REPLACE STORAGE INTEGRATION my_s3_int
+TYPE = EXTERNAL_STAGE
+STORAGE_PROVIDER = S3
+ENABLED = TRUE
+STORAGE_AWS_ROLE_ARN = '<IAM-ROLE-ARN>'
+STORAGE_ALLOWED_LOCATIONS = ('s3://...');
+
+// Create Stage
+CREATE OR REPLACE STAGE my_s3_stage
+URL = 's3://...'
+STORAGE_INTEGRATION = my_s3_int
+FILE_FORMAT = my_csv_format;
+
+// Load Data
+COPY INTO Review
+FROM @my_s3_stage
+FILE_FORMAT = (FORMAT_NAME = my_csv_format)
+ON_ERROR = 'CONTINUE';
+
+
+// Show First 100 Rows
+SELECT * FROM Review LIMIT 100;
+
+SELECT * FROM Review WHERE "User ID" = 'AE4BUAG3OE7PTW5ZXVIDJQTQIDUQ' LIMIT 10;
+
+SELECT 
+    "User ID", 
+    COUNT("ASIN") AS asin_count
+FROM 
+    Review
+GROUP BY 
+    "User ID"
+ORDER BY 
+    asin_count DESC
+LIMIT 100;
